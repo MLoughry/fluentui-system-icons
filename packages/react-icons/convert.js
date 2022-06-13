@@ -82,10 +82,10 @@ function processFiles(src, dest) {
 /**
  * Process a folder of svg files and convert them to React components, following naming patterns for the FluentUI System Icons
  * @param {string} srcPath 
- * @param {boolean} oneSize 
+ * @param {boolean} resizable 
  * @returns { string [] } - chunked icon files to insert
  */
-function processFolder(srcPath, destPath, oneSize) {
+function processFolder(srcPath, destPath, resizable) {
   var files = fs.readdirSync(srcPath)
 
   // These options will be passed to svgr/core
@@ -93,8 +93,8 @@ function processFolder(srcPath, destPath, oneSize) {
   var svgrOpts = {
     template: fileTemplate,
     expandProps: false, // HTML attributes/props for things like accessibility can be passed in, and will be expanded on the svg object at the start of the object
-    svgProps: { className: '{className}'}, // In order to provide styling, className will be used
-    replaceAttrValues: { '#212121': '{primaryFill}' }, // We are designating primaryFill as the primary color for filling. If not provided, it defaults to null.
+    svgProps: { className: '{undefined}'}, // In order to provide styling, className will be used
+    replaceAttrValues: { '#212121': '{undefined}' }, // We are designating primaryFill as the primary color for filling. If not provided, it defaults to null.
     typescript: true,
     icon: true
   }
@@ -102,8 +102,8 @@ function processFolder(srcPath, destPath, oneSize) {
   var svgrOptsSizedIcons = {
     template: fileTemplate,
     expandProps: false, // HTML attributes/props for things like accessibility can be passed in, and will be expanded on the svg object at the start of the object
-    svgProps: { className: '{className}'}, // In order to provide styling, className will be used
-    replaceAttrValues: { '#212121': '{primaryFill}' }, // We are designating primaryFill as the primary color for filling. If not provided, it defaults to null.
+    svgProps: { className: '{undefined}'}, // In order to provide styling, className will be used
+    replaceAttrValues: { '#212121': '{undefined}' }, // We are designating primaryFill as the primary color for filling. If not provided, it defaults to null.
     typescript: true
   }
 
@@ -120,28 +120,24 @@ function processFolder(srcPath, destPath, oneSize) {
       // }
       // indexContents += processFolder(srcFile, joinedDestPath)
     } else {
-      if(oneSize && !file.includes("20")) {
+      if(resizable && !file.includes("20")) {
         return
       }
       var iconName = file.substr(0, file.length - 4) // strip '.svg'
       iconName = iconName.replace("ic_fluent_", "") // strip ic_fluent_
-      iconName = oneSize ? iconName.replace("20", "") : iconName
+      iconName = resizable ? iconName.replace("20", "") : iconName
       var destFilename = _.camelCase(iconName) // We want them to be camelCase, so access_time would become accessTime here
       destFilename = destFilename.replace(destFilename.substring(0, 1), destFilename.substring(0, 1).toUpperCase()) // capitalize the first letter
 
       var iconContent = fs.readFileSync(srcFile, { encoding: "utf8" })
       
-      var jsxCode = oneSize ? svgr.default.sync(iconContent, svgrOpts, { filePath: file }) : svgr.default.sync(iconContent, svgrOptsSizedIcons, { filePath: file })
+      var jsxCode = resizable ? svgr.default.sync(iconContent, svgrOpts, { filePath: file }) : svgr.default.sync(iconContent, svgrOptsSizedIcons, { filePath: file })
       var jsCode = 
 `
-const ${destFilename}Icon = (iconProps: FluentIconsProps) => {
-  const { className, primaryFill } = iconProps;
-  return ${jsxCode};
-}
 
-export const ${destFilename} = /*#__PURE__*/wrapIcon(/*#__PURE__*/${destFilename}Icon({}), '${destFilename}');
+
+export const ${destFilename} = /*#__PURE__*/wrapIcon(/*#__PURE__*/${jsxCode}, '${destFilename}');
       `
-
       iconExports.push(jsCode);
     }
   });
@@ -155,7 +151,6 @@ export const ${destFilename} = /*#__PURE__*/wrapIcon(/*#__PURE__*/${destFilename
 
   for(const chunk of iconChunks) {
     chunk.unshift(`import wrapIcon from "../utils/wrapIcon";`)
-    chunk.unshift(`import { FluentIconsProps } from "../utils/FluentIconsProps.types";`)
     chunk.unshift(`import * as React from "react";`)
   }
 
